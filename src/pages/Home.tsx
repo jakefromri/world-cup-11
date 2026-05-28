@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 
 export function Home() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const [joinCode, setJoinCode] = useState('')
   const [creating, setCreating] = useState(false)
@@ -22,8 +22,9 @@ export function Home() {
 
   async function handleCreate() {
     if (!leagueName.trim()) return
+    if (authLoading) return
     if (!user) {
-      navigate('/login?next=create')
+      navigate(`/login?next=${encodeURIComponent(window.location.pathname + '?create=1')}`)
       return
     }
     setCreating(true)

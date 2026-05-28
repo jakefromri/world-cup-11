@@ -7,14 +7,33 @@ export function AuthCallback() {
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    // Give Supabase client time to exchange the hash tokens into a session
+    const handle = async () => {
       const next = searchParams.get('next') ?? '/'
+
+      // onAuthStateChange fires once the hash is processed
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          subscription.unsubscribe()
+          navigate(next, { replace: true })
+        }
+      })
+
+      // Also check if session already exists (page refresh case)
+      const { data } = await supabase.auth.getSession()
       if (data.session) {
+        subscription.unsubscribe()
         navigate(next, { replace: true })
-      } else {
-        navigate('/login', { replace: true })
       }
-    })
+
+      // Fallback after 5s
+      setTimeout(() => {
+        subscription.unsubscribe()
+        navigate(next, { replace: true })
+      }, 5000)
+    }
+
+    handle()
   }, [navigate, searchParams])
 
   return (
