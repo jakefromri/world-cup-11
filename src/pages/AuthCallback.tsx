@@ -7,11 +7,28 @@ export function AuthCallback() {
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
-    // Give Supabase client time to exchange the hash tokens into a session
     const handle = async () => {
       const next = searchParams.get('next') ?? '/'
 
-      // onAuthStateChange fires once the hash is processed
+      // Supabase v2 PKCE flow: magic link redirects here with ?code=XXXX
+      // We must explicitly exchange the code for a session.
+      const code = searchParams.get('code')
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (!error) {
+          navigate(next, { replace: true })
+          return
+        }
+      }
+
+      // Fallback: check if a session already exists (e.g. page refresh after sign-in)
+      const { data } = await supabase.auth.getSession()
+      if (data.session) {
+        navigate(next, { replace: true })
+        return
+      }
+
+      // Legacy implicit flow (hash-based token) — listen for the state change
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
           subscription.unsubscribe()
@@ -19,18 +36,11 @@ export function AuthCallback() {
         }
       })
 
-      // Also check if session already exists (page refresh case)
-      const { data } = await supabase.auth.getSession()
-      if (data.session) {
-        subscription.unsubscribe()
-        navigate(next, { replace: true })
-      }
-
-      // Fallback after 5s
+      // Safety fallback: redirect after 6s regardless
       setTimeout(() => {
         subscription.unsubscribe()
         navigate(next, { replace: true })
-      }, 5000)
+      }, 6000)
     }
 
     handle()

@@ -1,20 +1,18 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export function Login() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const next = searchParams.get('next') ?? '/'
 
-  async function handleMagicLink() {
+  async function handleSubmit() {
     if (!email.trim()) return
     setLoading(true)
     setError('')
@@ -32,24 +30,6 @@ export function Login() {
     }
     setSent(true)
     setLoading(false)
-  }
-
-  async function handlePassword() {
-    if (!email.trim() || !password.trim()) return
-    setLoading(true)
-    setError('')
-
-    const { error: err } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: password.trim(),
-    })
-
-    if (err) {
-      setError(err.message)
-      setLoading(false)
-      return
-    }
-    navigate(next, { replace: true })
   }
 
   return (
@@ -74,22 +54,16 @@ export function Login() {
               placeholder="your email"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               autoFocus
-            />
-            <Input
-              type="password"
-              placeholder="password (optional — for magic link leave blank)"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (password ? handlePassword() : handleMagicLink())}
             />
             {error && <div className="text-accent-red text-xs">{error}</div>}
             <Button
-              onClick={password ? handlePassword : handleMagicLink}
+              onClick={handleSubmit}
               disabled={loading || !email.trim()}
               size="lg"
             >
-              {loading ? 'signing in...' : password ? 'sign in' : 'send magic link'}
+              {loading ? 'sending...' : 'send magic link'}
             </Button>
           </div>
         )}

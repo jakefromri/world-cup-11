@@ -409,9 +409,106 @@ world-cup-11/
 
 before session 1 starts:
 
-- [ ] sign up at api-football.com, get API key
-- [ ] create `world-cup-11` GitHub repo (public)
-- [ ] create two Supabase projects: `world-cup-11-dev` and `world-cup-11-prod`
-- [ ] create Vercel project connected to the GitHub repo
-- [ ] note both Supabase project refs + anon keys + service role keys
+- [x] sign up at api-football.com, get API key
+- [x] create `world-cup-11` GitHub repo (public)
+- [x] create two Supabase projects: `world-cup-11-dev` and `world-cup-11-prod`
+- [x] create Vercel project connected to the GitHub repo
+- [x] note both Supabase project refs + anon keys + service role keys
 - [ ] confirm api-football World Cup 2026 competition is available (check dashboard)
+
+---
+
+## session 1 handoff — for claude cowork
+
+> **status as of 2026-05-28**: infrastructure complete, app scaffolded and deployed, auth broken. pick up from here.
+
+### what exists
+
+**git repo**: https://github.com/jakefromri/world-cup-11  
+local path: `skunkworks/world-cup-starting-11/`
+
+**vercel**: https://world-cup-starting-11.vercel.app  
+project name: `world-cup-starting-11` (under jake-7675s-projects)
+
+**supabase dev**: project ref `hktcxoumldzgbnbhjytj`  
+**supabase prod**: project ref `wspafzifrnpkfzpglkqn`  
+all keys are in `.credentials` (gitignored, in the project root)
+
+### environment variables
+
+set in Vercel (preview = dev supabase, production = prod supabase):
+
+```
+VITE_SUPABASE_URL          — supabase project URL (public)
+VITE_SUPABASE_ANON_KEY     — supabase anon key (public)
+SUPABASE_SERVICE_ROLE_KEY  — supabase service role key (secret, server-side only)
+API_FOOTBALL_KEY           — api-football.com v3 API key (secret)
+```
+
+local dev: copy `.credentials` values into `.env.local` using the same names.
+
+### what was built in session 1
+
+**schema**: migration `supabase/migrations/001_initial_schema.sql` — applied to dev. tables: `leagues`, `league_members`, `players`, `picks`, `matches`, `player_match_stats`. full RLS policies in place. confirmed visible in supabase dashboard.
+
+**app**: full Vite + React + TypeScript scaffold with:
+- dark theme (custom CSS variables matching scope palette)
+- tailwind CSS v4 + shadcn-style components (Button, Input, Toast)
+- react-router-dom with all routes wired
+- pages: Home, Login, AuthCallback, Join, League, Pick, Admin
+- components: PlayerCard, PlayerPicker (GK enforcement + 11-slot tray), Leaderboard
+- `src/hooks/useAuth.ts` — supabase session hook
+- `src/lib/supabase.ts` — supabase client
+- `src/lib/scoring.ts` — point computation logic (stub, needs real query)
+- `src/types/index.ts` — full type definitions
+
+**vercel API functions**:
+- `api/seed-players.ts` — seeds players table from api-football `/players/squads`
+- `api/sync-scores.ts` — syncs finished match stats from api-football
+
+**vercel.json**: cron removed (hobby plan limitation). score sync needs an alternative — recommend supabase pg_cron or a daily vercel cron (free tier allows 1/day).
+
+### what is broken / not done
+
+**auth was broken** — cowork fixed two issues on 2026-05-28:
+
+**fix 1 — PKCE token exchange (cowork, committed)**  
+`AuthCallback.tsx` was rewritten. Supabase v2 magic links use PKCE by default: the email link lands on `/auth/callback?code=XXXX`, and the app must call `supabase.auth.exchangeCodeForSession(code)` explicitly to get a session. The old version only listened to `onAuthStateChange` which never fires without the exchange. Fixed.
+
+**fix 2 — login page cleanup (cowork, committed)**  
+The password fallback field was removed from `Login.tsx`. App is magic-link only as originally scoped. The test user (`jakericciardi@gmail.com` / `WCtest2026!`) still exists in the dev Supabase project if you need it for quick testing — you can re-add the password field temporarily, or just use the Supabase dashboard to confirm the user exists.
+
+**still needs a dashboard step — Supabase redirect URL**  
+Before magic links will work, the callback URL must be whitelisted in Supabase:
+1. Go to Supabase dashboard → Authentication → URL Configuration
+2. Under **Redirect URLs**, add:
+   - `http://localhost:5173/auth/callback`
+   - `https://world-cup-starting-11.vercel.app/auth/callback`
+   - `https://world-cup-starting-11-*.vercel.app/auth/callback` (covers preview deploys)
+3. Save. Without this, magic link emails are sent but the redirect is blocked silently.
+
+**still needs SMTP verification**  
+Supabase dev projects have a 2 emails/hour rate limit on the built-in emailer. Resend SMTP was configured via management API but wasn't confirmed working. To verify:
+- Go to Supabase dashboard → Authentication → Logs — check if outbound emails show "resend" as provider
+- If still rate-limiting, the Resend SMTP config needs a verified domain. The Resend API key is in `.credentials`
+- Alternative for dev/testing: use Supabase's "Email OTP" mode and confirm the 6-digit code manually (works without SMTP setup)
+
+### what to do next (session 2 scope)
+
+once auth is working:
+
+1. **verify create league flow** — sign in with password, create a league, confirm redirect to `/league/:id` with join code visible
+2. **verify join flow** — open join URL in incognito, join the league, confirm `league_members` row created in supabase
+3. **seed players** — call `POST /api/seed-players` (from admin page or curl with service role key). this will populate the players table from api-football. verify the league ID for World Cup 2026 is correct (scope notes league ID `1` — confirm this in api-football dashboard before seeding).
+4. **verify pick flow** — go to `/league/:id/pick`, pick 11 players, submit, confirm `picks` rows in supabase
+5. **score computation** — the leaderboard currently shows 0 points for everyone. needs a SQL query that computes `raw_points / picker_count` per player per league. this is the core game mechanic — see `src/lib/scoring.ts` and `src/components/Leaderboard.tsx`
+6. **cron for score sync** — set up supabase pg_cron to call `sync-scores` every 3 hours during tournament: `select cron.schedule('sync-scores', '0 */3 * * *', $$select net.http_post(...)$$)`
+7. **mobile responsive pass** — check on phone, tighten spacing
+8. **prod deploy** — push schema to prod supabase, merge to main, verify on prod URL
+
+### known issues / gotchas
+
+- `vercel deploy` without `--prod` flag deploys a preview (new URL each time), not the aliased `world-cup-starting-11.vercel.app`. use `vercel deploy --prod` for the canonical URL.
+- supabase `db push` always pushes to the linked project — verify with `cat supabase/.temp/project-ref` before running. re-link with `supabase link --project-ref [REF]` to switch.
+- the `players` table is empty until seed-players is called. the Pick page shows an empty state message for this.
+- `src/lib/supabase.ts` uses `createClient<any>()` (no typed Database generic) to avoid TS errors — types are in `src/types/index.ts` instead.
