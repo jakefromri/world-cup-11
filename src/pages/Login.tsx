@@ -1,24 +1,25 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export function Login() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const next = searchParams.get('next') ?? '/'
 
-  async function handleSend() {
+  async function handleMagicLink() {
     if (!email.trim()) return
     setLoading(true)
     setError('')
 
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: { emailRedirectTo: redirectTo },
@@ -29,9 +30,26 @@ export function Login() {
       setLoading(false)
       return
     }
-
     setSent(true)
     setLoading(false)
+  }
+
+  async function handlePassword() {
+    if (!email.trim() || !password.trim()) return
+    setLoading(true)
+    setError('')
+
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password.trim(),
+    })
+
+    if (err) {
+      setError(err.message)
+      setLoading(false)
+      return
+    }
+    navigate(next, { replace: true })
   }
 
   return (
@@ -56,12 +74,22 @@ export function Login() {
               placeholder="your email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
               autoFocus
             />
+            <Input
+              type="password"
+              placeholder="password (optional — for magic link leave blank)"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (password ? handlePassword() : handleMagicLink())}
+            />
             {error && <div className="text-accent-red text-xs">{error}</div>}
-            <Button onClick={handleSend} disabled={loading || !email.trim()} size="lg">
-              {loading ? 'sending...' : 'send magic link'}
+            <Button
+              onClick={password ? handlePassword : handleMagicLink}
+              disabled={loading || !email.trim()}
+              size="lg"
+            >
+              {loading ? 'signing in...' : password ? 'sign in' : 'send magic link'}
             </Button>
           </div>
         )}
