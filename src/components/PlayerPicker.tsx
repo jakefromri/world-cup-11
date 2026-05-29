@@ -37,7 +37,10 @@ export function PlayerPicker({ players, onSubmit, submitting }: PickerProps) {
     })
   }, [players, posFilter, countryFilter, search])
 
-  const selectedGK = [...selected.values()].find(p => p.position === 'GK')
+  const selectedList = [...selected.values()]
+  const selectedGK = selectedList.find(p => p.position === 'GK')
+  const selectedDEF = selectedList.filter(p => p.position === 'DEF').length
+  const selectedMID = selectedList.filter(p => p.position === 'MID').length
   const selectedCount = selected.size
 
   function togglePlayer(player: Player) {
@@ -66,8 +69,10 @@ export function PlayerPicker({ players, onSubmit, submitting }: PickerProps) {
   function handleSubmit() {
     if (selectedCount !== 11) return
     if (!selectedGK) return
+    if (selectedDEF < 2) { toast('pick at least 2 defenders', 'error'); return }
+    if (selectedMID < 2) { toast('pick at least 2 midfielders', 'error'); return }
 
-    const picks = [...selected.values()].map(p => ({
+    const picks = selectedList.map(p => ({
       player: p,
       slot: p.position === 'GK' ? ('GK' as const) : ('outfield' as const),
     }))
@@ -160,19 +165,25 @@ export function PlayerPicker({ players, onSubmit, submitting }: PickerProps) {
           {slots.map((player, i) => (
             <div
               key={i}
+              onClick={() => player && togglePlayer(player)}
               className={cn(
-                'flex-shrink-0 w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-bold overflow-hidden',
+                'relative flex-shrink-0 w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-bold overflow-hidden',
+                player ? 'cursor-pointer' : 'cursor-default',
                 i === 0
                   ? player ? 'border-accent-amber' : 'border-accent-amber/40 text-accent-amber/60'
                   : player ? 'border-accent-blue' : 'border-border text-text-muted'
               )}
             >
               {player ? (
-                <img
-                  src={`https://flagcdn.com/w40/${player.country_code.toLowerCase()}.png`}
-                  alt={player.short_name}
-                  className="w-full h-full object-cover"
-                />
+                <>
+                  {player.photo_url
+                    ? <img src={player.photo_url} alt={player.short_name} className="w-full h-full object-cover" />
+                    : <span className="text-[10px] font-bold">{player.short_name.slice(0, 2).toUpperCase()}</span>
+                  }
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <span className="text-white text-[10px] font-bold">✕</span>
+                  </div>
+                </>
               ) : (
                 i === 0 ? 'GK' : i
               )}
@@ -186,11 +197,13 @@ export function PlayerPicker({ players, onSubmit, submitting }: PickerProps) {
           className="w-full"
           size="lg"
         >
-          {submitting
-            ? 'saving...'
-            : selectedCount === 11 && selectedGK
-            ? 'lock in my team'
-            : `pick ${11 - selectedCount} more${!selectedGK ? ' (need a GK)' : ''}`}
+          {submitting ? 'saving...' : (() => {
+            if (selectedCount < 11) return `pick ${11 - selectedCount} more${!selectedGK ? ' (need a GK)' : ''}`
+            if (!selectedGK) return 'need a GK'
+            if (selectedDEF < 2) return 'need 2+ defenders'
+            if (selectedMID < 2) return 'need 2+ midfielders'
+            return 'lock in my team'
+          })()}
         </Button>
       </div>
     </div>

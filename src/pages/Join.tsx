@@ -33,14 +33,16 @@ export function Join() {
 
   async function fetchLeague() {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error: fetchErr } = await supabase
       .from('leagues')
       .select('*')
       .eq('join_code', code!)
       .single()
 
+    console.log('fetchLeague code:', code, 'data:', data, 'error:', fetchErr)
+
     if (!data) {
-      setError('league not found — check the code')
+      setError(`league not found — check the code (${fetchErr?.message ?? 'no data'})`)
       setLoading(false)
       return
     }

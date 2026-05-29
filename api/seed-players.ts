@@ -1,27 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
-const LEAGUE_ID = 1 // FIFA World Cup (api-football v3)
-const SEASON = 2026
 const API_BASE = 'https://v3.football.api-sports.io'
+
+// WC 2022 team IDs from api-football — good stand-in for 2026 dev data.
+// Free plan supports /players/squads?team={id} but not league+season for 2026.
+const WC_TEAM_IDS = [
+  1, 2, 3, 6, 7, 9, 10, 12, 13, 14, 15, 16, 17, 20, 21, 22, 23, 24, 25, 26,
+  27, 28, 29, 31, 767, 1118, 1504, 1530, 1569, 2382, 2384, 5529,
+]
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-interface ApiPlayer {
-  player: {
-    id: number
-    name: string
-    firstname: string
-    lastname: string
-    nationality: string
-    number: number | null
-    pos: string
-    photo: string
-  }
-}
 
 function normalizePosition(pos: string): 'GK' | 'DEF' | 'MID' | 'FWD' {
   const map: Record<string, 'GK' | 'DEF' | 'MID' | 'FWD'> = {
@@ -31,7 +23,6 @@ function normalizePosition(pos: string): 'GK' | 'DEF' | 'MID' | 'FWD' {
   return map[pos] ?? 'MID'
 }
 
-// Country name → ISO 2-char code mapping for common World Cup nations
 const COUNTRY_TO_CODE: Record<string, string> = {
   'Argentina': 'ar', 'Australia': 'au', 'Austria': 'at', 'Belgium': 'be',
   'Brazil': 'br', 'Cameroon': 'cm', 'Canada': 'ca', 'Chile': 'cl',
@@ -48,6 +39,11 @@ const COUNTRY_TO_CODE: Record<string, string> = {
   'Ukraine': 'ua', 'Scotland': 'gb-sct', 'Ireland': 'ie', 'Algeria': 'dz',
   'Ivory Coast': 'ci', 'Mali': 'ml', 'Zambia': 'zm', 'Congo DR': 'cd',
   'South Africa': 'za', 'Guatemala': 'gt', 'Venezuela': 've', 'Bolivia': 'bo',
+  'Belgium': 'be', 'Croatia': 'hr', 'Australia': 'au', 'Denmark': 'dk',
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -56,48 +52,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.API_FOOTBALL_KEY
   if (!apiKey) return res.status(500).json({ error: 'API_FOOTBALL_KEY not set' })
 
-  let page = 1
   let totalInserted = 0
-  let hasMore = true
+  const errors: string[] = []
 
-  while (hasMore) {
-    const url = `${API_BASE}/players/squads?league=${LEAGUE_ID}&season=${SEASON}&page=${page}`
+  for (const teamId of WC_TEAM_IDS) {
+    await sleep(200) // stay under rate limit
+
+    const url = `${API_BASE}/players/squads?team=${teamId}`
     const response = await fetch(url, {
       headers: { 'x-apisports-key': apiKey },
     })
 
     if (!response.ok) {
-      return res.status(500).json({ error: `api-football error: ${response.status}` })
+      errors.push(`team ${teamId}: HTTP ${response.status}`)
+      continue
     }
 
     const data = await response.json() as {
-      response: { team: { name: string; country: string }; players: ApiPlayer[] }[]
-      paging: { current: number; total: number }
+      response: {
+        team: { id: number; name: string; country: string }
+        players: {
+          id: number; name: string; age: number
+          number: number | null; position: string; photo: string
+        }[]
+      }[]
+      errors: Record<string, string>
     }
 
-    for (const { team, players } of data.response) {
-      const countryCode = COUNTRY_TO_CODE[team.country] ?? team.country.slice(0, 2).toLowerCase()
-
-      const rows = players.map(({ player: p }) => ({
-        api_id: p.id,
-        name: `${p.firstname} ${p.lastname}`.trim() || p.name,
-        short_name: p.lastname || p.name,
-        position: normalizePosition(p.pos),
-        country: team.name,
-        country_code: countryCode,
-        photo_url: p.photo ?? null,
-        jersey_number: p.number ?? null,
-        seeded_at: new Date().toISOString(),
-      }))
-
-      const { error } = await supabase.from('players').upsert(rows, { onConflict: 'api_id' })
-      if (error) console.error('upsert error:', error)
-      else totalInserted += rows.length
+    if (Object.keys(data.errors ?? {}).length > 0) {
+      errors.push(`team ${teamId}: ${JSON.stringify(data.errors)}`)
+      continue
     }
 
-    hasMore = data.paging.current < data.paging.total
-    page++
+    const entry = data.response?.[0]
+    if (!entry) continue
+
+    const { team, players } = entry
+    const countryCode = COUNTRY_TO_CODE[team.name] ?? team.name.slice(0, 2).toLowerCase()
+
+    const rows = players.map(p => ({
+      api_id: p.id,
+      name: p.name,
+      short_name: p.name.split(' ').slice(-1)[0], // last name
+      position: normalizePosition(p.position),
+      country: team.name,
+      country_code: countryCode,
+      photo_url: p.photo ?? null,
+      jersey_number: p.number ?? null,
+      seeded_at: new Date().toISOString(),
+    }))
+
+    const { error } = await supabase.from('players').upsert(rows, { onConflict: 'api_id' })
+    if (error) {
+      errors.push(`team ${teamId} upsert: ${error.message}`)
+    } else {
+      totalInserted += rows.length
+      console.log(`seeded ${team.name}: ${rows.length} players`)
+    }
   }
 
-  return res.status(200).json({ message: `seeded ${totalInserted} players` })
+  return res.status(200).json({
+    message: `seeded ${totalInserted} players across ${WC_TEAM_IDS.length} teams`,
+    errors: errors.length > 0 ? errors : undefined,
+  })
 }

@@ -9,7 +9,7 @@ import type { Player, LeagueMember } from '@/types'
 export function Pick() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { toast } = useToast()
 
   const [players, setPlayers] = useState<Player[]>([])
@@ -18,8 +18,9 @@ export function Pick() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
+    if (authLoading) return
     fetchData()
-  }, [id, user])
+  }, [id, user, authLoading])
 
   async function fetchData() {
     setLoading(true)

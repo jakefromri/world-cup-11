@@ -1,16 +1,33 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
+const DEV_MODE = import.meta.env.DEV
+
 export function Login() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const next = searchParams.get('next') ?? '/'
+
+  async function handlePasswordLogin() {
+    if (!email.trim() || !password) return
+    setLoading(true)
+    setError('')
+    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    if (err) {
+      setError(err.message)
+      setLoading(false)
+      return
+    }
+    navigate(next, { replace: true })
+  }
 
   async function handleSubmit() {
     if (!email.trim()) return
@@ -54,9 +71,25 @@ export function Login() {
               placeholder="your email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              onKeyDown={e => e.key === 'Enter' && (DEV_MODE && password ? handlePasswordLogin() : handleSubmit())}
               autoFocus
             />
+            {DEV_MODE && (
+              <>
+                <Input
+                  type="password"
+                  placeholder="password (dev only)"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && password && handlePasswordLogin()}
+                />
+                {password && (
+                  <Button onClick={handlePasswordLogin} disabled={loading || !email.trim()} size="lg" variant="outline">
+                    {loading ? 'signing in...' : 'sign in with password'}
+                  </Button>
+                )}
+              </>
+            )}
             {error && <div className="text-accent-red text-xs">{error}</div>}
             <Button
               onClick={handleSubmit}

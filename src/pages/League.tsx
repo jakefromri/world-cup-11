@@ -12,7 +12,7 @@ type Tab = 'leaderboard' | 'my-team'
 export function League() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   const [tab, setTab] = useState<Tab>('leaderboard')
   const [league, setLeague] = useState<LeagueType | null>(null)
@@ -23,9 +23,9 @@ export function League() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || authLoading) return
     fetchAll()
-  }, [id, user])
+  }, [id, user, authLoading])
 
   async function fetchAll() {
     setLoading(true)

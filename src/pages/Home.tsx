@@ -1,9 +1,14 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+
+interface MyLeague {
+  league_id: string
+  leagues: { id: string; name: string; join_code: string } | null
+}
 
 export function Home() {
   const { user, loading: authLoading } = useAuth()
@@ -13,6 +18,16 @@ export function Home() {
   const [leagueName, setLeagueName] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [error, setError] = useState('')
+  const [myLeagues, setMyLeagues] = useState<MyLeague[]>([])
+
+  useEffect(() => {
+    if (authLoading || !user) return
+    supabase
+      .from('league_members')
+      .select('league_id, leagues(id, name, join_code)')
+      .eq('user_id', user.id)
+      .then(({ data }) => setMyLeagues((data as MyLeague[]) ?? []))
+  }, [user, authLoading])
 
   async function handleJoin() {
     const code = joinCode.trim().toUpperCase()
@@ -71,6 +86,25 @@ export function Home() {
           FIFA World Cup 2026 · picks lock June 11
         </div>
       </div>
+
+      {/* My leagues (authenticated users only) */}
+      {myLeagues.length > 0 && (
+        <div className="w-full max-w-sm mb-6">
+          <div className="text-xs text-text-muted font-semibold uppercase tracking-wider mb-2">my leagues</div>
+          <div className="flex flex-col gap-2">
+            {myLeagues.map(({ league_id, leagues: league }) => league && (
+              <Link
+                key={league_id}
+                to={`/league/${league.id}`}
+                className="flex items-center justify-between bg-surface rounded-xl border border-border px-4 py-3 hover:border-accent-blue transition-colors"
+              >
+                <span className="font-semibold text-text-primary">{league.name}</span>
+                <span className="font-mono text-xs text-accent-blue tracking-widest">{league.join_code}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="w-full max-w-sm flex flex-col gap-4">
