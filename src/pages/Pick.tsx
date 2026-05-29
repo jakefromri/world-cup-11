@@ -27,7 +27,7 @@ export function Pick() {
 
     const [{ data: leagueData }, { data: playersData }] = await Promise.all([
       supabase.from('leagues').select('*').eq('id', id!).single(),
-      supabase.from('players').select('*').order('country').order('position').order('short_name'),
+      supabase.from('players').select('*').order('country').order('position').order('short_name').limit(2000),
     ])
 
     if (!leagueData) { navigate('/'); return }
