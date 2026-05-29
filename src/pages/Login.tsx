@@ -4,10 +4,12 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-const DEV_MODE = import.meta.env.DEV
+function syntheticEmail(username: string) {
+  return `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@wc11.play`
+}
 
 export function Login() {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('') // email or username
   const [password, setPassword] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -16,35 +18,36 @@ export function Login() {
   const navigate = useNavigate()
   const next = searchParams.get('next') ?? '/'
 
+  const isEmail = identifier.includes('@')
+
   async function handlePasswordLogin() {
-    if (!email.trim() || !password) return
+    if (!identifier.trim() || !password) return
     setLoading(true)
     setError('')
-    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+
+    const loginEmail = isEmail ? identifier.trim() : syntheticEmail(identifier)
+    const { error: err } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
+
     if (err) {
-      setError(err.message)
+      setError('wrong player name or password')
       setLoading(false)
       return
     }
     navigate(next, { replace: true })
   }
 
-  async function handleSubmit() {
-    if (!email.trim()) return
+  async function handleMagicLink() {
+    if (!identifier.trim() || !isEmail) return
     setLoading(true)
     setError('')
 
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
     const { error: err } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
+      email: identifier.trim(),
       options: { emailRedirectTo: redirectTo },
     })
 
-    if (err) {
-      setError(err.message)
-      setLoading(false)
-      return
-    }
+    if (err) { setError(err.message); setLoading(false); return }
     setSent(true)
     setLoading(false)
   }
@@ -55,49 +58,74 @@ export function Login() {
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">⚽</div>
           <h1 className="text-2xl font-black text-text-primary">sign in</h1>
-          <p className="text-text-muted text-sm mt-2">we'll send a magic link to your email</p>
+          <p className="text-text-muted text-sm mt-2">
+            enter your player name + password, or email for a magic link
+          </p>
         </div>
 
         {sent ? (
           <div className="bg-surface border border-accent-green/30 rounded-xl p-6 text-center">
             <div className="text-2xl mb-2">📬</div>
             <div className="font-semibold text-text-primary mb-1">check your inbox</div>
-            <div className="text-sm text-text-muted">sent a link to <strong>{email}</strong></div>
+            <div className="text-sm text-text-muted">sent a link to <strong>{identifier}</strong></div>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             <Input
-              type="email"
-              placeholder="your email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (DEV_MODE && password ? handlePasswordLogin() : handleSubmit())}
+              placeholder="player name or email"
+              value={identifier}
+              onChange={e => { setIdentifier(e.target.value); setError('') }}
+              onKeyDown={e => e.key === 'Enter' && (isEmail ? handleMagicLink() : handlePasswordLogin())}
               autoFocus
             />
-            {DEV_MODE && (
+
+            {/* Password field — always shown, required for username login */}
+            <Input
+              type="password"
+              placeholder={isEmail ? 'password (or leave blank for magic link)' : 'password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (password ? handlePasswordLogin() : isEmail ? handleMagicLink() : null)}
+            />
+
+            {error && <div className="text-accent-red text-xs">{error}</div>}
+
+            {/* Primary action */}
+            {!isEmail ? (
+              <Button
+                onClick={handlePasswordLogin}
+                disabled={loading || !identifier.trim() || !password}
+                size="lg"
+              >
+                {loading ? 'signing in...' : 'sign in'}
+              </Button>
+            ) : (
               <>
-                <Input
-                  type="password"
-                  placeholder="password (dev only)"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && password && handlePasswordLogin()}
-                />
                 {password && (
-                  <Button onClick={handlePasswordLogin} disabled={loading || !email.trim()} size="lg" variant="outline">
+                  <Button onClick={handlePasswordLogin} disabled={loading} size="lg">
                     {loading ? 'signing in...' : 'sign in with password'}
                   </Button>
                 )}
+                <Button
+                  onClick={handleMagicLink}
+                  disabled={loading || !identifier.trim()}
+                  size="lg"
+                  variant={password ? 'outline' : 'default'}
+                >
+                  {loading ? 'sending...' : 'send magic link'}
+                </Button>
               </>
             )}
-            {error && <div className="text-accent-red text-xs">{error}</div>}
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !email.trim()}
-              size="lg"
-            >
-              {loading ? 'sending...' : 'send magic link'}
-            </Button>
+
+            <div className="text-center text-xs text-text-muted mt-1">
+              joining a league?{' '}
+              <button
+                onClick={() => navigate('/')}
+                className="text-accent-blue hover:underline"
+              >
+                use the invite link instead
+              </button>
+            </div>
           </div>
         )}
       </div>

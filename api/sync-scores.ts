@@ -126,7 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const yellowCard = (s.cards?.yellow ?? 0) > 0
       const redCard = (s.cards?.red ?? 0) > 0
       // Clean sheet: GK played full 90 and goals conceded = 0
-      const cleanSheet = saves > 0 && fixture.goals.home === 0 || fixture.goals.away === 0
+      const cleanSheet = opponentScore === 0
 
       await supabase.from('player_match_stats').upsert({
         player_id: playerRow.id,

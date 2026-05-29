@@ -67,9 +67,28 @@ export interface PlayerMatchStats {
   synced_at: string | null
 }
 
+export interface MatchBreakdown {
+  homeTeam: string
+  awayTeam: string
+  result: 'win' | 'draw' | 'loss'
+  goals: number
+  assists: number
+  saves: number
+  cleanSheet: boolean
+  rawPoints: number
+  pickerCount: number
+  splitPoints: number
+}
+
+export interface PlayerPoints {
+  total: number
+  breakdown: MatchBreakdown[]
+}
+
 export interface LeaderboardEntry {
   member: LeagueMember
   picks: (Pick & { player: Player })[]
   totalPoints: number
   groupPoints: number
+  playerPoints: Record<string, PlayerPoints>
 }

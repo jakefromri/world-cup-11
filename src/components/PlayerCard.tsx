@@ -28,7 +28,7 @@ export function PlayerCard({ player, points, selected, onClick, compact }: Playe
         selected
           ? 'border-accent-blue shadow-lg shadow-accent-blue/20'
           : 'border-border hover:border-border/80',
-        compact ? 'h-28' : 'h-44',
+        compact ? 'h-28' : 'h-36 sm:h-44',
         onClick && 'active:scale-95'
       )}
       style={{
@@ -61,7 +61,7 @@ export function PlayerCard({ player, points, selected, onClick, compact }: Playe
           <img
             src={player.photo_url}
             alt={player.short_name}
-            className="w-16 h-16 object-cover rounded-full border border-border/50"
+            className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-full border border-border/50"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
           />
         )}

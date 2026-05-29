@@ -91,22 +91,22 @@ export function PlayerPicker({ players, onSubmit, submitting }: PickerProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Sticky search + filters */}
-      <div className="sticky top-0 z-20 bg-background pb-3 pt-4 px-4 border-b border-border">
+      <div className="sticky top-0 z-20 bg-background pb-2 pt-3 px-4 border-b border-border">
         <Input
           placeholder="search players..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="mb-3"
+          className="mb-2"
         />
 
-        {/* Position filters */}
-        <div className="flex gap-2 flex-wrap">
+        {/* Position + country filters — single scrollable row */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
           {(['ALL', 'GK', 'DEF', 'MID', 'FWD'] as Position[]).map(pos => (
             <button
               key={pos}
               onClick={() => setPosFilter(pos)}
               className={cn(
-                'px-3 py-1 rounded-full text-xs font-semibold border transition-colors',
+                'flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold border transition-colors',
                 posFilter === pos
                   ? 'bg-accent-blue border-accent-blue text-white'
                   : 'border-border text-text-muted hover:border-text-muted'
@@ -116,26 +116,25 @@ export function PlayerPicker({ players, onSubmit, submitting }: PickerProps) {
             </button>
           ))}
 
-          {/* Country filter chips (show top flags) */}
-          <div className="flex gap-1 flex-wrap">
-            {countries.slice(0, 16).map(([code, name]) => (
-              <button
-                key={code}
-                onClick={() => setCountryFilter(countryFilter === code ? null : code)}
-                title={name}
-                className={cn(
-                  'w-8 h-6 rounded overflow-hidden border-2 transition-colors',
-                  countryFilter === code ? 'border-accent-blue' : 'border-transparent opacity-70 hover:opacity-100'
-                )}
-              >
-                <img
-                  src={`https://flagcdn.com/w40/${code.toLowerCase()}.png`}
-                  alt={name}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
-          </div>
+          <div className="w-px bg-border flex-shrink-0 mx-0.5" />
+
+          {countries.map(([code, name]) => (
+            <button
+              key={code}
+              onClick={() => setCountryFilter(countryFilter === code ? null : code)}
+              title={name}
+              className={cn(
+                'flex-shrink-0 w-8 h-6 rounded overflow-hidden border-2 transition-colors',
+                countryFilter === code ? 'border-accent-blue' : 'border-transparent opacity-60 hover:opacity-100'
+              )}
+            >
+              <img
+                src={`https://flagcdn.com/w40/${code.toLowerCase()}.png`}
+                alt={name}
+                className="w-full h-full object-cover"
+              />
+            </button>
+          ))}
         </div>
       </div>
 

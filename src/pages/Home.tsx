@@ -71,9 +71,9 @@ export function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 sm:py-16">
       {/* Hero */}
-      <div className="text-center mb-12 max-w-lg">
+      <div className="text-center mb-8 sm:mb-12 max-w-lg">
         <div className="text-6xl mb-4">⚽</div>
         <h1 className="text-4xl sm:text-5xl font-black text-text-primary mb-4 leading-tight">
           world cup<br />starting 11

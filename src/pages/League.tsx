@@ -5,7 +5,8 @@ import { Leaderboard } from '@/components/Leaderboard'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/cn'
-import type { League as LeagueType, LeagueMember, Pick, Player, LeaderboardEntry } from '@/types'
+import { computeRawPoints } from '@/lib/scoring'
+import type { League as LeagueType, LeagueMember, Pick, Player, LeaderboardEntry, PlayerPoints } from '@/types'
 
 type Tab = 'leaderboard' | 'my-team'
 
@@ -60,13 +61,76 @@ export function League() {
       setMyPicks(picks.filter(p => p.member_id === me.id))
     }
 
-    // Build leaderboard entries (points = 0 until scoring is live)
-    const leaderboardEntries: LeaderboardEntry[] = members.map(member => ({
-      member,
-      picks: picks.filter(p => p.member_id === member.id),
-      totalPoints: 0,
-      groupPoints: 0,
-    }))
+    // Fetch match stats for all picked players
+    const playerIds = [...new Set(picks.map(p => p.player_id))]
+    const { data: statsData } = playerIds.length > 0
+      ? await supabase
+          .from('player_match_stats')
+          .select('*, match:matches(id, home_team, away_team, home_score, away_score, status, stage)')
+          .in('player_id', playerIds)
+      : { data: [] }
+
+    // picker count per player in this league
+    const pickerCounts = new Map<string, number>()
+    for (const pick of picks) {
+      pickerCounts.set(pick.player_id, (pickerCounts.get(pick.player_id) ?? 0) + 1)
+    }
+
+    // stats grouped by player_id
+    const statsMap = new Map<string, typeof statsData>()
+    for (const stat of statsData ?? []) {
+      if (!statsMap.has(stat.player_id)) statsMap.set(stat.player_id, [])
+      statsMap.get(stat.player_id)!.push(stat)
+    }
+
+    // Build leaderboard entries with real scoring + per-player breakdowns
+    const leaderboardEntries: LeaderboardEntry[] = members.map(member => {
+      const memberPicks = picks.filter(p => p.member_id === member.id)
+      let totalPoints = 0
+      let groupPoints = 0
+      const playerPoints: Record<string, PlayerPoints> = {}
+
+      for (const pick of memberPicks) {
+        const stats = statsMap.get(pick.player_id) ?? []
+        const pickerCount = pickerCounts.get(pick.player_id) ?? 1
+        const pp: PlayerPoints = { total: 0, breakdown: [] }
+
+        for (const stat of stats) {
+          const match = stat.match as { home_team: string; away_team: string; home_score: number; away_score: number; status: string; stage: string } | null
+          if (!match || match.status !== 'finished') continue
+
+          const isHome = match.home_team === pick.player.country
+          const myScore = isHome ? match.home_score : match.away_score
+          const theirScore = isHome ? match.away_score : match.home_score
+          const result: 'win' | 'draw' | 'loss' =
+            myScore > theirScore ? 'win' : myScore === theirScore ? 'draw' : 'loss'
+
+          const rawPoints = computeRawPoints(stat, pick.slot === 'GK', result)
+          const splitPoints = rawPoints / pickerCount
+
+          pp.total += splitPoints
+          pp.breakdown.push({
+            homeTeam: match.home_team,
+            awayTeam: match.away_team,
+            result,
+            goals: stat.goals,
+            assists: stat.assists,
+            saves: stat.saves,
+            cleanSheet: stat.clean_sheet,
+            rawPoints,
+            pickerCount,
+            splitPoints,
+          })
+
+          totalPoints += splitPoints
+          if (match.stage === 'group') groupPoints += splitPoints
+        }
+
+        playerPoints[pick.player_id] = pp
+      }
+
+      return { member, picks: memberPicks, totalPoints, groupPoints, playerPoints }
+    })
 
     setEntries(leaderboardEntries)
     setLoading(false)
