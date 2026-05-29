@@ -25,10 +25,12 @@ export function Pick() {
   async function fetchData() {
     setLoading(true)
 
-    const [{ data: leagueData }, { data: playersData }] = await Promise.all([
+    const [{ data: leagueData }, page1, page2] = await Promise.all([
       supabase.from('leagues').select('*').eq('id', id!).single(),
-      supabase.from('players').select('*').order('country').order('position').order('short_name').limit(2000),
+      supabase.from('players').select('*').order('country').order('position').order('short_name').range(0, 999),
+      supabase.from('players').select('*').order('country').order('position').order('short_name').range(1000, 1999),
     ])
+    const playersData = [...(page1.data ?? []), ...(page2.data ?? [])]
 
     if (!leagueData) { navigate('/'); return }
 
