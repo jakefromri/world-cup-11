@@ -102,30 +102,47 @@ for (const { id: teamId, name: teamName } of WC_TEAMS) {
     continue
   }
 
-  await sleep(700) // pro plan: 100 req/min
+  // Fetch all pages for this team (20 players/page)
+  const players = []
+  let page = 1
+  let totalPages = 1
 
-  const res = await fetch(`${API_BASE}/players/squads?team=${teamId}`, {
-    headers: { 'x-apisports-key': env.API_FOOTBALL_KEY },
-  })
-  const data = await res.json()
+  while (page <= totalPages) {
+    await sleep(700) // pro plan: 100 req/min
+    const res = await fetch(`${API_BASE}/players?team=${teamId}&season=2026&page=${page}`, {
+      headers: { 'x-apisports-key': env.API_FOOTBALL_KEY },
+    })
+    const data = await res.json()
 
-  if (!data.response?.[0]) {
-    console.log(`${teamName}: no data — ${JSON.stringify(data.errors ?? {})}`)
+    if (data.errors && Object.keys(data.errors).length > 0) {
+      console.log(`${teamName} p${page}: API error — ${JSON.stringify(data.errors)}`)
+      break
+    }
+
+    totalPages = data.paging?.total ?? 1
+    for (const { player, statistics } of data.response ?? []) {
+      const position = statistics?.[0]?.games?.position ?? 'Midfielder'
+      players.push({ player, position })
+    }
+    page++
+  }
+
+  if (players.length === 0) {
+    console.log(`${teamName}: no players returned`)
     continue
   }
 
-  const { team, players } = data.response[0]
-  const countryCode = COUNTRY_TO_CODE[team.name] ?? team.name.slice(0, 2).toLowerCase()
+  const countryCode = COUNTRY_TO_CODE[teamName] ?? teamName.slice(0, 2).toLowerCase()
 
-  const rows = players.map(p => ({
-    api_id: p.id,
-    name: p.name,
-    short_name: p.name.split(' ').pop(),
-    position: normalizePosition(p.position),
-    country: team.name,
+  const rows = players.map(({ player, position }) => ({
+    api_id: player.id,
+    name: player.name,
+    short_name: player.name.split(' ').pop(),
+    position: normalizePosition(position),
+    country: teamName,
     country_code: countryCode,
-    photo_url: p.photo ?? null,
-    jersey_number: p.number ?? null,
+    photo_url: player.photo ?? null,
+    jersey_number: null,
     seeded_at: new Date().toISOString(),
   }))
 
@@ -134,7 +151,7 @@ for (const { id: teamId, name: teamName } of WC_TEAMS) {
     console.error(`${teamName} upsert error:`, error.message)
   } else {
     totalInserted += rows.length
-    console.log(`✓ ${team.name}: ${rows.length} players`)
+    console.log(`✓ ${teamName}: ${rows.length} players`)
   }
 }
 

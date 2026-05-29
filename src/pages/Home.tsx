@@ -131,7 +131,13 @@ export function Home() {
 
         {/* Create */}
         {!showCreate ? (
-          <Button variant="outline" size="lg" onClick={() => setShowCreate(true)}>
+          <Button variant="outline" size="lg" onClick={() => {
+            if (!user) {
+              navigate(`/login?next=${encodeURIComponent('/?create=1')}`)
+            } else {
+              setShowCreate(true)
+            }
+          }}>
             create a league
           </Button>
         ) : (
@@ -142,6 +148,7 @@ export function Home() {
               value={leagueName}
               onChange={e => setLeagueName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              autoFocus
             />
             {error && <div className="text-accent-red text-xs">{error}</div>}
             <Button onClick={handleCreate} disabled={creating || !leagueName.trim()} size="lg">

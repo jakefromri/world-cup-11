@@ -43,14 +43,10 @@ export function Leaderboard({ entries, currentMemberId, picksLocked }: Leaderboa
                 setExpandedPlayer(null)
               }}
             >
-              <span className={cn(
-                'w-6 text-base font-black flex-shrink-0 text-right',
-                rank === 1 && 'text-accent-gold',
-                rank === 2 && 'text-gray-400',
-                rank === 3 && 'text-amber-600',
-                rank > 3 && 'text-text-muted',
-              )}>
-                {rank}
+              <span className="w-6 text-base flex-shrink-0 text-center">
+                {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : (
+                  <span className="text-sm font-bold text-text-muted">{rank}</span>
+                )}
               </span>
 
               <span className="flex-1 min-w-0 font-semibold text-text-primary text-sm truncate">

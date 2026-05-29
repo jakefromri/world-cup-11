@@ -171,6 +171,9 @@ export function League() {
       {/* Header */}
       <div className="bg-surface border-b border-border px-4 py-4">
         <div className="max-w-lg mx-auto">
+          <Link to="/" className="text-xs text-text-muted hover:text-text-primary mb-3 flex items-center gap-1 w-fit">
+            ← home
+          </Link>
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-xl font-black text-text-primary">{league.name}</h1>
