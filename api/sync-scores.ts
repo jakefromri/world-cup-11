@@ -91,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `${API_BASE}/fixtures/players?fixture=${fixture.fixture.id}`,
       { headers: { 'x-apisports-key': apiKey } }
     )
-    const statsData = await statsRes.json() as { response: { players: ApiPlayerStat[] }[] }
+    const statsData = await statsRes.json() as { response: { team: { name: string }; players: ApiPlayerStat[] }[] }
 
     // Get our match id
     const { data: matchRow } = await supabase
@@ -102,46 +102,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!matchRow) continue
 
-    const allPlayerStats: ApiPlayerStat[] = (statsData.response ?? []).flatMap(t => t.players)
+    for (const teamData of statsData.response ?? []) {
+      const isHome = teamData.team.name === fixture.teams.home.name
+      const opponentScore = isHome ? (fixture.goals.away ?? 0) : (fixture.goals.home ?? 0)
 
-    for (const { player, statistics } of allPlayerStats) {
-      const s = statistics[0]
-      if (!s) continue
+      for (const { player, statistics } of teamData.players) {
+        const s = statistics[0]
+        if (!s) continue
 
-      // Lookup player by api_id
-      const { data: playerRow } = await supabase
-        .from('players')
-        .select('id')
-        .eq('api_id', player.id)
-        .single()
+        // Lookup player by api_id
+        const { data: playerRow } = await supabase
+          .from('players')
+          .select('id')
+          .eq('api_id', player.id)
+          .single()
 
-      if (!playerRow) continue
+        if (!playerRow) continue
 
-      const minutes = s.games?.minutes ?? 0
-      if (minutes === 0) continue // didn't play
+        const minutes = s.games?.minutes ?? 0
+        if (minutes === 0) continue // didn't play
 
-      const goals = s.goals?.total ?? 0
-      const assists = s.goals?.assists ?? 0
-      const saves = s.goalkeeper?.saves ?? 0
-      const yellowCard = (s.cards?.yellow ?? 0) > 0
-      const redCard = (s.cards?.red ?? 0) > 0
-      // Clean sheet: GK played full 90 and goals conceded = 0
-      const cleanSheet = opponentScore === 0
+        const goals = s.goals?.total ?? 0
+        const assists = s.goals?.assists ?? 0
+        const saves = s.goalkeeper?.saves ?? 0
+        const yellowCard = (s.cards?.yellow ?? 0) > 0
+        const redCard = (s.cards?.red ?? 0) > 0
+        const cleanSheet = opponentScore === 0
 
-      await supabase.from('player_match_stats').upsert({
-        player_id: playerRow.id,
-        match_id: matchRow.id,
-        goals,
-        assists,
-        saves,
-        minutes_played: minutes,
-        clean_sheet: cleanSheet,
-        yellow_card: yellowCard,
-        red_card: redCard,
-        synced_at: new Date().toISOString(),
-      }, { onConflict: 'player_id,match_id' })
+        await supabase.from('player_match_stats').upsert({
+          player_id: playerRow.id,
+          match_id: matchRow.id,
+          goals,
+          assists,
+          saves,
+          minutes_played: minutes,
+          clean_sheet: cleanSheet,
+          yellow_card: yellowCard,
+          red_card: redCard,
+          synced_at: new Date().toISOString(),
+        }, { onConflict: 'player_id,match_id' })
 
-      statsSynced++
+        statsSynced++
+      }
     }
   }
 

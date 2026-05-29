@@ -39,7 +39,6 @@ const COUNTRY_TO_CODE: Record<string, string> = {
   'Ukraine': 'ua', 'Scotland': 'gb-sct', 'Ireland': 'ie', 'Algeria': 'dz',
   'Ivory Coast': 'ci', 'Mali': 'ml', 'Zambia': 'zm', 'Congo DR': 'cd',
   'South Africa': 'za', 'Guatemala': 'gt', 'Venezuela': 've', 'Bolivia': 'bo',
-  'Belgium': 'be', 'Croatia': 'hr', 'Australia': 'au', 'Denmark': 'dk',
 }
 
 function sleep(ms: number) {

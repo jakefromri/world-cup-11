@@ -12,51 +12,73 @@ const env = Object.fromEntries(
 
 const API_BASE = 'https://v3.football.api-sports.io'
 
-// WC 2022 team IDs → names (from api-football /teams?league=1&season=2022)
+// WC 2026 team IDs → names (from api-football /teams?league=1&season=2026)
 const WC_TEAMS = [
   { id: 1,    name: 'Belgium' },
   { id: 2,    name: 'France' },
   { id: 3,    name: 'Croatia' },
+  { id: 5,    name: 'Sweden' },
   { id: 6,    name: 'Brazil' },
   { id: 7,    name: 'Uruguay' },
+  { id: 8,    name: 'Colombia' },
   { id: 9,    name: 'Spain' },
   { id: 10,   name: 'England' },
+  { id: 11,   name: 'Panama' },
   { id: 12,   name: 'Japan' },
   { id: 13,   name: 'Senegal' },
-  { id: 14,   name: 'Serbia' },
   { id: 15,   name: 'Switzerland' },
   { id: 16,   name: 'Mexico' },
   { id: 17,   name: 'South Korea' },
   { id: 20,   name: 'Australia' },
-  { id: 21,   name: 'Denmark' },
   { id: 22,   name: 'Iran' },
   { id: 23,   name: 'Saudi Arabia' },
-  { id: 24,   name: 'Poland' },
   { id: 25,   name: 'Germany' },
   { id: 26,   name: 'Argentina' },
   { id: 27,   name: 'Portugal' },
   { id: 28,   name: 'Tunisia' },
-  { id: 29,   name: 'Costa Rica' },
   { id: 31,   name: 'Morocco' },
-  { id: 767,  name: 'Wales' },
+  { id: 32,   name: 'Egypt' },
+  { id: 770,  name: 'Czech Republic' },
+  { id: 775,  name: 'Austria' },
+  { id: 777,  name: 'Türkiye' },
+  { id: 1090, name: 'Norway' },
+  { id: 1108, name: 'Scotland' },
+  { id: 1113, name: 'Bosnia & Herzegovina' },
   { id: 1118, name: 'Netherlands' },
+  { id: 1501, name: 'Ivory Coast' },
   { id: 1504, name: 'Ghana' },
-  { id: 1530, name: 'Cameroon' },
+  { id: 1508, name: 'Congo DR' },
+  { id: 1531, name: 'South Africa' },
+  { id: 1532, name: 'Algeria' },
+  { id: 1533, name: 'Cape Verde Islands' },
+  { id: 1548, name: 'Jordan' },
+  { id: 1567, name: 'Iraq' },
+  { id: 1568, name: 'Uzbekistan' },
   { id: 1569, name: 'Qatar' },
+  { id: 2380, name: 'Paraguay' },
   { id: 2382, name: 'Ecuador' },
   { id: 2384, name: 'USA' },
+  { id: 2386, name: 'Haiti' },
+  { id: 4673, name: 'New Zealand' },
   { id: 5529, name: 'Canada' },
+  { id: 5530, name: 'Curaçao' },
 ]
 
 const COUNTRY_TO_CODE = {
-  'Argentina': 'ar', 'Australia': 'au', 'Belgium': 'be', 'Brazil': 'br',
-  'Cameroon': 'cm', 'Canada': 'ca', 'Costa Rica': 'cr', 'Croatia': 'hr',
-  'Denmark': 'dk', 'Ecuador': 'ec', 'England': 'gb-eng', 'France': 'fr',
-  'Germany': 'de', 'Ghana': 'gh', 'Iran': 'ir', 'Japan': 'jp',
-  'Mexico': 'mx', 'Morocco': 'ma', 'Netherlands': 'nl', 'Poland': 'pl',
-  'Portugal': 'pt', 'Qatar': 'qa', 'Saudi Arabia': 'sa', 'Senegal': 'sn',
-  'Serbia': 'rs', 'South Korea': 'kr', 'Spain': 'es', 'Switzerland': 'ch',
-  'Tunisia': 'tn', 'USA': 'us', 'Uruguay': 'uy', 'Wales': 'gb-wls',
+  'Algeria': 'dz', 'Argentina': 'ar', 'Australia': 'au', 'Austria': 'at',
+  'Belgium': 'be', 'Bosnia & Herzegovina': 'ba', 'Brazil': 'br',
+  'Canada': 'ca', 'Cape Verde Islands': 'cv', 'Colombia': 'co',
+  'Congo DR': 'cd', 'Croatia': 'hr', 'Curaçao': 'cw',
+  'Czech Republic': 'cz', 'Ecuador': 'ec', 'Egypt': 'eg',
+  'England': 'gb-eng', 'France': 'fr', 'Germany': 'de', 'Ghana': 'gh',
+  'Haiti': 'ht', 'Iran': 'ir', 'Iraq': 'iq', 'Ivory Coast': 'ci',
+  'Japan': 'jp', 'Jordan': 'jo', 'Mexico': 'mx', 'Morocco': 'ma',
+  'Netherlands': 'nl', 'New Zealand': 'nz', 'Norway': 'no',
+  'Panama': 'pa', 'Paraguay': 'py', 'Portugal': 'pt', 'Qatar': 'qa',
+  'Saudi Arabia': 'sa', 'Scotland': 'gb-sct', 'Senegal': 'sn',
+  'South Africa': 'za', 'South Korea': 'kr', 'Spain': 'es',
+  'Sweden': 'se', 'Switzerland': 'ch', 'Tunisia': 'tn', 'Türkiye': 'tr',
+  'Uruguay': 'uy', 'USA': 'us', 'Uzbekistan': 'uz',
 }
 
 function normalizePosition(pos) {
@@ -80,7 +102,7 @@ for (const { id: teamId, name: teamName } of WC_TEAMS) {
     continue
   }
 
-  await sleep(6500) // free plan: 10 req/min
+  await sleep(700) // pro plan: 100 req/min
 
   const res = await fetch(`${API_BASE}/players/squads?team=${teamId}`, {
     headers: { 'x-apisports-key': env.API_FOOTBALL_KEY },

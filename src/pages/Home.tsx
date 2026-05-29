@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
@@ -13,10 +13,11 @@ interface MyLeague {
 export function Home() {
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [joinCode, setJoinCode] = useState('')
   const [creating, setCreating] = useState(false)
   const [leagueName, setLeagueName] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
+  const [showCreate, setShowCreate] = useState(() => searchParams.get('create') === '1')
   const [error, setError] = useState('')
   const [myLeagues, setMyLeagues] = useState<MyLeague[]>([])
 
@@ -26,7 +27,7 @@ export function Home() {
       .from('league_members')
       .select('league_id, leagues(id, name, join_code)')
       .eq('user_id', user.id)
-      .then(({ data }) => setMyLeagues((data as MyLeague[]) ?? []))
+      .then(({ data }) => setMyLeagues((data as unknown as MyLeague[]) ?? []))
   }, [user, authLoading])
 
   async function handleJoin() {

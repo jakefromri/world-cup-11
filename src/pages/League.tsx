@@ -22,6 +22,7 @@ export function League() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [locking, setLocking] = useState(false)
 
   useEffect(() => {
     if (!id || authLoading) return
@@ -77,7 +78,8 @@ export function League() {
     }
 
     // stats grouped by player_id
-    const statsMap = new Map<string, typeof statsData>()
+    type StatRow = NonNullable<typeof statsData>[number]
+    const statsMap = new Map<string, StatRow[]>()
     for (const stat of statsData ?? []) {
       if (!statsMap.has(stat.player_id)) statsMap.set(stat.player_id, [])
       statsMap.get(stat.player_id)!.push(stat)
@@ -143,6 +145,19 @@ export function League() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  async function toggleLock() {
+    if (!league) return
+    const newLocked = !league.picks_locked
+    if (newLocked && !window.confirm('Lock picks for everyone? Members won\'t be able to change their team.')) return
+    setLocking(true)
+    const { error } = await supabase
+      .from('leagues')
+      .update({ picks_locked: newLocked, picks_locked_at: newLocked ? new Date().toISOString() : null })
+      .eq('id', league.id)
+    if (!error) setLeague({ ...league, picks_locked: newLocked, picks_locked_at: newLocked ? new Date().toISOString() : null })
+    setLocking(false)
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-text-muted">loading...</div>
   }
@@ -163,17 +178,30 @@ export function League() {
                 {entries.length} member{entries.length !== 1 ? 's' : ''}
               </div>
             </div>
-            <button
-              onClick={copyCode}
-              className="flex flex-col items-end gap-0.5"
-            >
-              <span className="font-mono font-bold tracking-widest text-accent-blue text-lg">
-                {league.join_code}
-              </span>
-              <span className="text-xs text-text-muted">
-                {copied ? '✓ copied!' : 'tap to copy invite code'}
-              </span>
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                onClick={copyCode}
+                className="flex flex-col items-end gap-0.5"
+              >
+                <span className="font-mono font-bold tracking-widest text-accent-blue text-lg">
+                  {league.join_code}
+                </span>
+                <span className="text-xs text-text-muted">
+                  {copied ? '✓ copied!' : 'tap to copy invite code'}
+                </span>
+              </button>
+              {user?.id === league.created_by && (
+                <Button
+                  size="sm"
+                  variant={league.picks_locked ? 'outline' : 'default'}
+                  onClick={toggleLock}
+                  disabled={locking}
+                  className={league.picks_locked ? 'text-accent-amber border-accent-amber/40 hover:border-accent-amber' : ''}
+                >
+                  {locking ? '...' : league.picks_locked ? '🔓 unlock picks' : '🔒 lock picks'}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
