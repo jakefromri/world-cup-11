@@ -99,8 +99,8 @@ export function PlayerPicker({ players, onSubmit, submitting }: PickerProps) {
           className="mb-2"
         />
 
-        {/* Position + country filters — single scrollable row */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+        {/* Position filters — fixed row, always visible */}
+        <div className="flex gap-1.5 mb-2">
           {(['ALL', 'GK', 'DEF', 'MID', 'FWD'] as Position[]).map(pos => (
             <button
               key={pos}
@@ -115,24 +115,41 @@ export function PlayerPicker({ players, onSubmit, submitting }: PickerProps) {
               {pos}
             </button>
           ))}
+        </div>
 
-          <div className="w-px bg-border flex-shrink-0 mx-0.5" />
-
+        {/* Country filters — scrollable row with flag + abbreviation */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => setCountryFilter(null)}
+            className={cn(
+              'flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors',
+              countryFilter === null
+                ? 'bg-accent-blue border-accent-blue text-white'
+                : 'border-border text-text-muted hover:border-text-muted'
+            )}
+          >
+            all
+          </button>
           {countries.map(([code, name]) => (
             <button
               key={code}
               onClick={() => setCountryFilter(countryFilter === code ? null : code)}
               title={name}
               className={cn(
-                'flex-shrink-0 w-8 h-6 rounded overflow-hidden border-2 transition-colors',
-                countryFilter === code ? 'border-accent-blue' : 'border-transparent opacity-60 hover:opacity-100'
+                'flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg border transition-colors',
+                countryFilter === code
+                  ? 'border-accent-blue bg-accent-blue/10'
+                  : 'border-border opacity-70 hover:opacity-100'
               )}
             >
               <img
                 src={`https://flagcdn.com/w40/${code.toLowerCase()}.png`}
                 alt={name}
-                className="w-full h-full object-cover"
+                className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
               />
+              <span className="text-[10px] font-semibold text-text-primary whitespace-nowrap">
+                {name.length <= 3 ? name : name.slice(0, 3).toUpperCase()}
+              </span>
             </button>
           ))}
         </div>
