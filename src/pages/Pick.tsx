@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate, useBlocker } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { PlayerPicker } from '@/components/PlayerPicker'
 import { useAuth } from '@/hooks/useAuth'
@@ -17,6 +17,7 @@ export function Pick() {
   const [existingPicks, setExistingPicks] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
   // Track current picks from PlayerPicker for dirty-state detection
   const currentPicksRef = useRef<Map<string, Player>>(new Map())
@@ -35,13 +36,15 @@ export function Pick() {
     setIsDirty(dirty)
   }, [existingPicks])
 
-  // Block in-app navigation (React Router) when there are unsaved picks
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname
-  )
+  function handleBackClick() {
+    if (isDirty) {
+      setShowLeaveDialog(true)
+    } else {
+      navigate(`/league/${id}`)
+    }
+  }
 
-  // Block tab close / page refresh when there are unsaved picks
+  // Guard tab close / page refresh when there are unsaved picks
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (!isDirty) return
@@ -148,7 +151,7 @@ export function Pick() {
   return (
     <div className="h-screen flex flex-col">
       <div className="bg-surface border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/league/${id}`)} className="text-text-muted hover:text-text-primary">
+        <button onClick={handleBackClick} className="text-text-muted hover:text-text-primary">
           ← back
         </button>
         <div className="font-semibold text-text-primary">pick your starting 11</div>
@@ -166,7 +169,7 @@ export function Pick() {
       </div>
 
       {/* Navigation guard dialog — shown when user tries to leave with unsaved picks */}
-      {blocker.state === 'blocked' && (
+      {showLeaveDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
           <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl">
             <div className="text-lg font-semibold text-text-primary mb-2">leave without saving?</div>
@@ -175,13 +178,13 @@ export function Pick() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => blocker.reset?.()}
+                onClick={() => setShowLeaveDialog(false)}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-text-primary hover:bg-surface-hover transition-colors"
               >
                 stay
               </button>
               <button
-                onClick={() => blocker.proceed?.()}
+                onClick={() => navigate(`/league/${id}`)}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors"
               >
                 leave anyway
