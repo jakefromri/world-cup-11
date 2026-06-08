@@ -35,6 +35,7 @@ export interface Player {
   club_assists: number
   club_saves: number
   club_clean_sheets: number
+  wc_squad: boolean
   seeded_at: string | null
 }
 

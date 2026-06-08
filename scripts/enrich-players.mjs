@@ -28,13 +28,13 @@ async function fetchPlayerStats(apiId, season) {
 }
 
 async function main() {
-  const { data: players, error } = await supabase
-    .from('players')
-    .select('id, api_id, position')
-    .order('id')
-
-  if (error) { console.error('fetch players failed:', error); process.exit(1) }
-  console.log(`Enriching ${players.length} players from 2024 season...`)
+  const [p1, p2] = await Promise.all([
+    supabase.from('players').select('id, api_id, position').eq('wc_squad', true).order('id').range(0, 999),
+    supabase.from('players').select('id, api_id, position').eq('wc_squad', true).order('id').range(1000, 1999),
+  ])
+  if (p1.error) { console.error('fetch players failed:', p1.error); process.exit(1) }
+  const players = [...(p1.data ?? []), ...(p2.data ?? [])]
+  console.log(`Enriching ${players.length} wc_squad players (2025→2024→2023)...`)
 
   let done = 0
   let missed = 0
@@ -42,8 +42,8 @@ async function main() {
   for (const player of players) {
     await sleep(SLEEP_MS)
 
-    let row = await fetchPlayerStats(player.api_id, 2024)
-    // fall back to 2023 if no 2024 data
+    let row = await fetchPlayerStats(player.api_id, 2025)
+    if (!row) row = await fetchPlayerStats(player.api_id, 2024)
     if (!row) row = await fetchPlayerStats(player.api_id, 2023)
 
     if (!row) {
