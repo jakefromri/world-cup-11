@@ -21,11 +21,20 @@ export interface Player {
   api_id: number
   name: string
   short_name: string
+  full_name: string | null
   position: 'GK' | 'DEF' | 'MID' | 'FWD'
   country: string
   country_code: string
   photo_url: string | null
   jersey_number: number | null
+  birth_date: string | null
+  club_name: string | null
+  club_logo_url: string | null
+  club_season: string | null
+  club_goals: number
+  club_assists: number
+  club_saves: number
+  club_clean_sheets: number
   seeded_at: string | null
 }
 

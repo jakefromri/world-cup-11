@@ -14,6 +14,7 @@ export function Pick() {
 
   const [players, setPlayers] = useState<Player[]>([])
   const [myMember, setMyMember] = useState<LeagueMember | null>(null)
+  const [existingPicks, setExistingPicks] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -53,6 +54,12 @@ export function Pick() {
         return
       }
       setMyMember(memberData)
+
+      const { data: picksData } = await supabase
+        .from('picks')
+        .select('*, player:players(*)')
+        .eq('member_id', memberData.id)
+      setExistingPicks((picksData ?? []).map((p: { player: Player }) => p.player))
     } else {
       navigate(`/login?next=/league/${id}/pick`)
       return
@@ -111,7 +118,7 @@ export function Pick() {
         <div className="ml-auto text-xs text-text-muted">1 GK + 10 outfield</div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <PlayerPicker players={players} onSubmit={handleSubmit} submitting={submitting} />
+        <PlayerPicker players={players} onSubmit={handleSubmit} submitting={submitting} initialPicks={existingPicks} />
       </div>
     </div>
   )
