@@ -53,18 +53,34 @@ async function main() {
     }
 
     const p = row.player
-    const stats = row.statistics?.[0]
+    const allStats = row.statistics ?? []
 
+    // Full name from firstname + lastname, not the abbreviated p.name
+    const fullName = (p.firstname && p.lastname)
+      ? `${p.firstname} ${p.lastname}`
+      : p.name ?? null
+
+    // Primary club = most minutes played across all competitions
+    const primaryStats = allStats.reduce((best, s) =>
+      (s.games?.minutes ?? 0) > (best?.games?.minutes ?? 0) ? s : best
+    , allStats[0])
+
+    // Sum goals/assists/saves across ALL competitions
+    const totalGoals = allStats.reduce((n, s) => n + (s.goals?.total ?? 0), 0)
+    const totalAssists = allStats.reduce((n, s) => n + (s.goals?.assists ?? 0), 0)
+    const totalSaves = allStats.reduce((n, s) => n + (s.goals?.saves ?? 0), 0)
+
+    const season = primaryStats?.league?.season
     const update = {
-      full_name: p.name ?? null,
+      full_name: fullName,
       birth_date: p.birth?.date ?? null,
-      club_name: stats?.team?.name ?? null,
-      club_logo_url: stats?.team?.logo ?? null,
-      club_season: stats?.league?.season ? `${stats.league.season}-${String(stats.league.season + 1).slice(2)}` : null,
-      club_goals: stats?.goals?.total ?? 0,
-      club_assists: stats?.goals?.assists ?? 0,
-      club_saves: stats?.goals?.saves ?? 0,
-      club_clean_sheets: 0, // not available in player stats endpoint; populated separately if needed
+      club_name: primaryStats?.team?.name ?? null,
+      club_logo_url: primaryStats?.team?.logo ?? null,
+      club_season: season ? `${season}-${String(season + 1).slice(2)}` : null,
+      club_goals: totalGoals,
+      club_assists: totalAssists,
+      club_saves: totalSaves,
+      club_clean_sheets: 0,
     }
 
     const { error: updateErr } = await supabase
