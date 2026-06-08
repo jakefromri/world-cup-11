@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams, useNavigate, useBlocker } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { PlayerPicker } from '@/components/PlayerPicker'
 import { useAuth } from '@/hooks/useAuth'
@@ -17,6 +17,40 @@ export function Pick() {
   const [existingPicks, setExistingPicks] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+
+  // Track current picks from PlayerPicker for dirty-state detection
+  const currentPicksRef = useRef<Map<string, Player>>(new Map())
+  const [isDirty, setIsDirty] = useState(false)
+
+  const storageKey = id ? `draft_picks_${id}` : undefined
+
+  const handlePicksChange = useCallback((picks: Map<string, Player>) => {
+    currentPicksRef.current = picks
+    // Dirty if current picks differ from what's saved in the DB
+    const savedIds = new Set(existingPicks.map(p => p.id))
+    const currentIds = new Set(picks.keys())
+    const dirty =
+      currentIds.size !== savedIds.size ||
+      [...currentIds].some(id => !savedIds.has(id))
+    setIsDirty(dirty)
+  }, [existingPicks])
+
+  // Block in-app navigation (React Router) when there are unsaved picks
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname
+  )
+
+  // Block tab close / page refresh when there are unsaved picks
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
   useEffect(() => {
     if (authLoading) return
@@ -88,6 +122,11 @@ export function Pick() {
       return
     }
 
+    // Clear draft and dirty state before navigating away
+    if (storageKey) {
+      try { sessionStorage.removeItem(storageKey) } catch { /* ignore */ }
+    }
+    setIsDirty(false)
     toast('team saved!', 'success')
     navigate(`/league/${id}`)
   }
@@ -116,8 +155,41 @@ export function Pick() {
         <div className="ml-auto text-xs text-text-muted">1 GK + 10 outfield</div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <PlayerPicker players={players} onSubmit={handleSubmit} submitting={submitting} initialPicks={existingPicks} />
+        <PlayerPicker
+          players={players}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+          initialPicks={existingPicks}
+          storageKey={storageKey}
+          onPicksChange={handlePicksChange}
+        />
       </div>
+
+      {/* Navigation guard dialog — shown when user tries to leave with unsaved picks */}
+      {blocker.state === 'blocked' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <div className="text-lg font-semibold text-text-primary mb-2">leave without saving?</div>
+            <div className="text-sm text-text-muted mb-6">
+              you have unsaved picks — they'll be waiting if you come back, but won't count until you lock in your team.
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => blocker.reset?.()}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-text-primary hover:bg-surface-hover transition-colors"
+              >
+                stay
+              </button>
+              <button
+                onClick={() => blocker.proceed?.()}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors"
+              >
+                leave anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

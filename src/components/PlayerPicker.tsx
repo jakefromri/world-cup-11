@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { PlayerCard } from './PlayerCard'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -13,12 +13,43 @@ interface PickerProps {
   onSubmit: (picks: { player: Player; slot: 'GK' | 'outfield' }[]) => Promise<void>
   submitting?: boolean
   initialPicks?: Player[]
+  storageKey?: string
+  onPicksChange?: (picks: Map<string, Player>) => void
 }
 
-export function PlayerPicker({ players, onSubmit, submitting, initialPicks }: PickerProps) {
+function loadDraft(storageKey: string | undefined, players: Player[], initialPicks: Player[] | undefined): Map<string, Player> {
+  if (storageKey) {
+    try {
+      const raw = sessionStorage.getItem(storageKey)
+      if (raw) {
+        const ids: string[] = JSON.parse(raw)
+        // Use full player list for lookup so draft can include any player, not just saved ones
+        const byId = new Map(players.map(p => [p.id, p]))
+        const draft = new Map<string, Player>()
+        for (const id of ids) {
+          if (byId.has(id)) draft.set(id, byId.get(id)!)
+        }
+        if (draft.size > 0) return draft
+      }
+    } catch { /* ignore corrupt storage */ }
+  }
+  return new Map((initialPicks ?? []).map(p => [p.id, p]))
+}
+
+export function PlayerPicker({ players, onSubmit, submitting, initialPicks, storageKey, onPicksChange }: PickerProps) {
   const [selected, setSelected] = useState<Map<string, Player>>(
-    () => new Map((initialPicks ?? []).map(p => [p.id, p]))
+    () => loadDraft(storageKey, players, initialPicks)
   )
+
+  // Sync picks to sessionStorage and notify parent on every change
+  useEffect(() => {
+    if (storageKey) {
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify([...selected.keys()]))
+      } catch { /* ignore quota errors */ }
+    }
+    onPicksChange?.(selected)
+  }, [selected, storageKey, onPicksChange])
   const [search, setSearch] = useState('')
   const [posFilter, setPosFilter] = useState<Position>('ALL')
   const [countryFilter, setCountryFilter] = useState<string | null>(null)
@@ -75,6 +106,10 @@ export function PlayerPicker({ players, onSubmit, submitting, initialPicks }: Pi
     if (selectedDEF < 2) { toast('pick at least 2 defenders', 'error'); return }
     if (selectedMID < 2) { toast('pick at least 2 midfielders', 'error'); return }
 
+    if (storageKey) {
+      try { sessionStorage.removeItem(storageKey) } catch { /* ignore */ }
+    }
+
     const picks = selectedList.map(p => ({
       player: p,
       slot: p.position === 'GK' ? ('GK' as const) : ('outfield' as const),
@@ -121,7 +156,8 @@ export function PlayerPicker({ players, onSubmit, submitting, initialPicks }: Pi
         </div>
 
         {/* Country filters — scrollable row with flag + abbreviation */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+        {/* overscroll-x-contain prevents horizontal scroll from triggering browser back on mobile */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide overscroll-x-contain">
           <button
             onClick={() => setCountryFilter(null)}
             className={cn(
