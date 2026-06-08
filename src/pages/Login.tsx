@@ -40,7 +40,19 @@ export function Login() {
     setLoading(true)
     setError('')
 
-    const loginEmail = isEmail ? identifier.trim() : syntheticEmail(identifier)
+    let loginEmail: string
+    if (isEmail) {
+      loginEmail = identifier.trim()
+    } else {
+      const { data: resolved } = await supabase.rpc('resolve_username', { p_username: identifier.trim() })
+      if (!resolved) {
+        setError('player name not found — try signing in with your email address instead')
+        setLoading(false)
+        return
+      }
+      loginEmail = resolved
+    }
+
     const { error: err } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
 
     if (err) {

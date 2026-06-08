@@ -75,7 +75,11 @@ export function Join() {
       display_name: displayName.trim(),
     })
     if (err) {
-      setError('could not join — you may already be a member')
+      if (err.code === '23505') {
+        setError(`"${displayName.trim()}" is already taken in this league — pick a different display name`)
+      } else {
+        setError('could not join — you may already be a member')
+      }
       return false
     }
     return true
@@ -127,8 +131,19 @@ export function Join() {
     setSubmitting(true)
     setError('')
 
-    // Detect email vs username
-    const loginEmail = playerName.includes('@') ? playerName.trim() : syntheticEmail(playerName)
+    // Detect email vs username — for username-only accounts use resolve_username RPC
+    let loginEmail: string
+    if (playerName.includes('@')) {
+      loginEmail = playerName.trim()
+    } else {
+      const { data: resolved } = await supabase.rpc('resolve_username', { p_username: playerName.trim() })
+      if (!resolved) {
+        setError('player name not found — try signing in with your email address instead')
+        setSubmitting(false)
+        return
+      }
+      loginEmail = resolved
+    }
 
     const { data, error: signInErr } = await supabase.auth.signInWithPassword({
       email: loginEmail,
