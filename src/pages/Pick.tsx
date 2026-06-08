@@ -58,7 +58,7 @@ export function Pick() {
   useEffect(() => {
     if (authLoading) return
     fetchData()
-  }, [id, user, authLoading])
+  }, [id, user?.id, authLoading])
 
   async function fetchData() {
     setLoading(true)
