@@ -37,7 +37,7 @@ export function Join() {
 
   useEffect(() => {
     if (!authLoading && user && league) checkMembership()
-  }, [user, authLoading, league])
+  }, [user?.id, authLoading, league])
 
   async function fetchLeague() {
     setLoading(true)

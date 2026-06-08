@@ -28,7 +28,7 @@ export function Home() {
       .select('league_id, leagues(id, name, join_code)')
       .eq('user_id', user.id)
       .then(({ data }) => setMyLeagues((data as unknown as MyLeague[]) ?? []))
-  }, [user, authLoading])
+  }, [user?.id, authLoading])
 
   async function handleJoin() {
     const code = joinCode.trim().toUpperCase()

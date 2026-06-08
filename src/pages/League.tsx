@@ -27,7 +27,7 @@ export function League() {
   useEffect(() => {
     if (!id || authLoading) return
     fetchAll()
-  }, [id, user, authLoading])
+  }, [id, user?.id, authLoading])
 
   async function fetchAll() {
     setLoading(true)
