@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Leaderboard } from '@/components/Leaderboard'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/cn'
 import { computeRawPoints } from '@/lib/scoring'
@@ -23,6 +24,11 @@ export function League() {
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [locking, setLocking] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [newDisplayName, setNewDisplayName] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [nameError, setNameError] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!id || authLoading) return
@@ -145,6 +151,37 @@ export function League() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function startEditingName() {
+    setNewDisplayName(myMember?.display_name ?? '')
+    setNameError('')
+    setEditingName(true)
+    setTimeout(() => nameInputRef.current?.select(), 0)
+  }
+
+  async function saveDisplayName() {
+    if (!myMember || !newDisplayName.trim()) return
+    if (newDisplayName.trim() === myMember.display_name) { setEditingName(false); return }
+    setSavingName(true)
+    setNameError('')
+    const { error } = await supabase
+      .from('league_members')
+      .update({ display_name: newDisplayName.trim() })
+      .eq('id', myMember.id)
+    if (error) {
+      setNameError(error.code === '23505' ? 'that name is already taken in this league' : 'could not save — try again')
+      setSavingName(false)
+      return
+    }
+    setMyMember({ ...myMember, display_name: newDisplayName.trim() })
+    setEntries(prev => prev.map(e =>
+      e.member.id === myMember.id
+        ? { ...e, member: { ...e.member, display_name: newDisplayName.trim() } }
+        : e
+    ))
+    setEditingName(false)
+    setSavingName(false)
+  }
+
   async function toggleLock() {
     if (!league) return
     const newLocked = !league.picks_locked
@@ -260,8 +297,31 @@ export function League() {
             ) : (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm font-semibold text-text-muted">your team</div>
-                  {!league.picks_locked && (
+                  {editingName ? (
+                    <div className="flex flex-col gap-1 flex-1 mr-3">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          ref={nameInputRef}
+                          value={newDisplayName}
+                          onChange={e => { setNewDisplayName(e.target.value); setNameError('') }}
+                          onKeyDown={e => { if (e.key === 'Enter') saveDisplayName(); if (e.key === 'Escape') setEditingName(false) }}
+                          maxLength={30}
+                          className="h-8 text-sm"
+                        />
+                        <Button size="sm" onClick={saveDisplayName} disabled={savingName || !newDisplayName.trim()}>
+                          {savingName ? '...' : 'save'}
+                        </Button>
+                        <button onClick={() => setEditingName(false)} className="text-text-muted hover:text-text-primary text-sm">✕</button>
+                      </div>
+                      {nameError && <div className="text-accent-red text-xs">{nameError}</div>}
+                    </div>
+                  ) : (
+                    <button onClick={startEditingName} className="group flex items-center gap-1.5 text-left">
+                      <span className="text-sm font-semibold text-text-primary">{myMember.display_name}</span>
+                      <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">✏️</span>
+                    </button>
+                  )}
+                  {!editingName && !league.picks_locked && (
                     <Link to={`/league/${id}/pick`}>
                       <Button size="sm" variant="outline">edit picks</Button>
                     </Link>
