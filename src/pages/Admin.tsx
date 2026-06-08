@@ -28,11 +28,11 @@ export function Admin() {
     if (!authLoading && user?.email !== ADMIN_EMAIL) {
       navigate('/')
     }
-  }, [user, authLoading, navigate])
+  }, [user?.email, authLoading, navigate])
 
   useEffect(() => {
     if (user?.email === ADMIN_EMAIL) fetchData()
-  }, [user])
+  }, [user?.email])
 
   async function fetchData() {
     setLoading(true)
