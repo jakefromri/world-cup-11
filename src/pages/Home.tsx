@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { UserNav } from '@/components/UserNav'
 
 interface MyLeague {
   league_id: string
@@ -73,6 +74,13 @@ export function Home() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 sm:py-16">
+      {/* Top bar */}
+      {user && (
+        <div className="fixed top-0 right-0 px-4 py-3">
+          <UserNav />
+        </div>
+      )}
+
       {/* Hero */}
       <div className="text-center mb-8 sm:mb-12 max-w-lg">
         <div className="text-6xl mb-4">⚽</div>

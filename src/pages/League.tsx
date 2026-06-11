@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/cn'
 import { computeRawPoints } from '@/lib/scoring'
+import { UserNav } from '@/components/UserNav'
 import type { League as LeagueType, LeagueMember, Pick, Player, LeaderboardEntry, PlayerPoints } from '@/types'
 
 type Tab = 'leaderboard' | 'my-team'
@@ -208,9 +209,12 @@ export function League() {
       {/* Header */}
       <div className="bg-surface border-b border-border px-4 py-4">
         <div className="max-w-lg mx-auto">
-          <Link to="/" className="text-xs text-text-muted hover:text-text-primary mb-3 flex items-center gap-1 w-fit">
-            ← home
-          </Link>
+          <div className="flex items-center justify-between mb-3">
+            <Link to="/" className="text-xs text-text-muted hover:text-text-primary flex items-center gap-1">
+              ← home
+            </Link>
+            <UserNav />
+          </div>
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-xl font-black text-text-primary">{league.name}</h1>
