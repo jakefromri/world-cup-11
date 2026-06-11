@@ -158,6 +158,15 @@ export function Home() {
         )}
       </div>
 
+      {/* Admin link — only visible to admin */}
+      {user?.email === 'jakericciardi@gmail.com' && (
+        <div className="mt-8 w-full max-w-sm">
+          <Link to="/admin" className="text-xs text-text-muted hover:text-text-primary underline underline-offset-2">
+            admin →
+          </Link>
+        </div>
+      )}
+
       {/* Scoring legend */}
       <div className="mt-16 max-w-sm w-full">
         <div className="text-xs text-text-muted font-semibold uppercase tracking-wider mb-3">scoring</div>
