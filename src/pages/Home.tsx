@@ -167,7 +167,7 @@ export function Home() {
       </div>
 
       {/* Admin link — only visible to admin */}
-      {user?.email === 'jakericciardi@gmail.com' && (
+      {['jakericciardi@gmail.com', 'jake@foxricciardi.com'].includes(user?.email ?? '') && (
         <div className="mt-8 w-full max-w-sm">
           <Link to="/admin" className="text-xs text-text-muted hover:text-text-primary underline underline-offset-2">
             admin →

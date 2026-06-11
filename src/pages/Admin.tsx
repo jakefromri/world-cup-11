@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 
-const ADMIN_EMAIL = 'jakericciardi@gmail.com'
+const ADMIN_EMAILS = ['jakericciardi@gmail.com', 'jake@foxricciardi.com']
 
 interface LeagueSummary {
   id: string
@@ -25,13 +25,13 @@ export function Admin() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!authLoading && user?.email !== ADMIN_EMAIL) {
+    if (!authLoading && !ADMIN_EMAILS.includes(user?.email ?? '')) {
       navigate('/')
     }
   }, [user?.email, authLoading, navigate])
 
   useEffect(() => {
-    if (user?.email === ADMIN_EMAIL) fetchData()
+    if (ADMIN_EMAILS.includes(user?.email ?? '')) fetchData()
   }, [user?.email])
 
   async function fetchData() {
