@@ -45,7 +45,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method not allowed' })
 
   const apiKey = process.env.API_FOOTBALL_KEY
-  if (!apiKey) return res.status(500).json({ error: 'API_FOOTBALL_KEY not set' })
+  if (!apiKey) return res.status(500).json({ message: 'API_FOOTBALL_KEY not set' })
+
+  try {
+    return await syncScores(req, res, apiKey)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    return res.status(500).json({ message: `sync error: ${message}` })
+  }
+}
+
+async function syncScores(req: VercelRequest, res: VercelResponse, apiKey: string) {
 
   // 1. Fetch all fixtures from api-football
   const fixturesRes = await fetch(
