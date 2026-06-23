@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { UserNav } from '@/components/UserNav'
+import { PlayerLeaderboard } from '@/components/PlayerLeaderboard'
 
 interface MyLeague {
   league_id: string
@@ -175,8 +176,13 @@ export function Home() {
         </div>
       )}
 
+      {/* Player leaderboard */}
+      <div className="mt-12 max-w-sm w-full">
+        <PlayerLeaderboard />
+      </div>
+
       {/* Scoring legend */}
-      <div className="mt-16 max-w-sm w-full">
+      <div className="mt-10 max-w-sm w-full">
         <div className="text-xs text-text-muted font-semibold uppercase tracking-wider mb-3">scoring</div>
         <div className="grid grid-cols-2 gap-1 text-sm">
           {[
