@@ -63,8 +63,8 @@ export function PlayerLeaderboard() {
     const map = new Map<string, PlayerStat>()
 
     for (const row of data) {
-      const player = row.player as { id: string; name: string; short_name: string; position: Position; country: string; country_code: string; photo_url: string | null } | null
-      const match = row.match as { home_team: string; away_team: string; home_score: number | null; away_score: number | null; status: string } | null
+      const player = row.player as unknown as { id: string; name: string; short_name: string; position: Position; country: string; country_code: string; photo_url: string | null } | null
+      const match = row.match as unknown as { home_team: string; away_team: string; home_score: number | null; away_score: number | null; status: string } | null
 
       if (!player || !match || match.status !== 'finished') continue
       if (match.home_score == null || match.away_score == null) continue
