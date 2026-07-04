@@ -73,8 +73,10 @@ async function syncScores(req: VercelRequest, res: VercelResponse, apiKey: strin
 
   const syncedIds = new Set((syncedMatches ?? []).map(m => m.api_id))
 
+  const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN'])
+
   const finished = allFixtures.filter(
-    f => f.fixture.status.short === 'FT' && !syncedIds.has(f.fixture.id)
+    f => FINISHED_STATUSES.has(f.fixture.status.short) && !syncedIds.has(f.fixture.id)
   )
 
   // 3. Upsert all matches (scheduled + finished) for the fixture list
@@ -86,10 +88,10 @@ async function syncScores(req: VercelRequest, res: VercelResponse, apiKey: strin
     away_country_code: '',
     home_score: f.goals.home,
     away_score: f.goals.away,
-    status: f.fixture.status.short === 'FT' ? 'finished' : f.fixture.status.short === '1H' || f.fixture.status.short === '2H' ? 'live' : 'scheduled',
+    status: FINISHED_STATUSES.has(f.fixture.status.short) ? 'finished' : f.fixture.status.short === '1H' || f.fixture.status.short === '2H' || f.fixture.status.short === 'ET' || f.fixture.status.short === 'BT' || f.fixture.status.short === 'P' ? 'live' : 'scheduled',
     stage: parseStage(f.league.round),
     match_date: f.fixture.date,
-    synced_at: f.fixture.status.short === 'FT' ? new Date().toISOString() : null,
+    synced_at: FINISHED_STATUSES.has(f.fixture.status.short) ? new Date().toISOString() : null,
   }))
 
   await supabase.from('matches').upsert(matchRows, { onConflict: 'api_id' })
