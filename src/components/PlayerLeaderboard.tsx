@@ -62,15 +62,27 @@ export function PlayerLeaderboard() {
   }, [])
 
   async function fetchStats() {
-    const { data } = await supabase
-      .from('player_match_stats')
-      .select(`
-        goals, assists, saves, clean_sheet,
-        player:players(id, name, short_name, position, country, country_code, photo_url),
-        match:matches(home_team, away_team, home_score, away_score, status)
-      `)
+    // PostgREST caps a single request at ~1000 rows, and this table now has
+    // more than that — paginate so newly-synced stats aren't silently dropped.
+    const pageSize = 1000
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any[] = []
+    for (let from = 0; ; from += pageSize) {
+      const { data: page, error } = await supabase
+        .from('player_match_stats')
+        .select(`
+          goals, assists, saves, clean_sheet,
+          player:players(id, name, short_name, position, country, country_code, photo_url),
+          match:matches(home_team, away_team, home_score, away_score, status)
+        `)
+        .range(from, from + pageSize - 1)
 
-    if (!data) { setLoading(false); return }
+      if (error || !page) break
+      data.push(...page)
+      if (page.length < pageSize) break
+    }
+
+    if (data.length === 0) { setLoading(false); return }
 
     // Aggregate per player
     const map = new Map<string, PlayerStat>()
