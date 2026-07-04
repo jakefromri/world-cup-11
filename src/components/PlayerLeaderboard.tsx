@@ -46,6 +46,19 @@ export function PlayerLeaderboard() {
 
   useEffect(() => {
     fetchStats()
+
+    // Refetch whenever admin sync writes new/updated stats, so the
+    // leaderboard reflects the latest fixtures without a manual reload.
+    const channel = supabase
+      .channel('player-leaderboard-stats')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_match_stats' }, () => {
+        fetchStats()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   async function fetchStats() {
